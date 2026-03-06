@@ -5,6 +5,86 @@ import re
 import time
 import os
 from datetime import datetime
+def process_apars_table(soup, div_id, metadata, output_file_name):
+    """
+    Locates a div by ID, then finds the first table with class 'bx--data-table' 
+    following that div in the document structure.
+    """
+    # 1. Locate the anchor div/span
+    count = 1
+    anchor = soup.find(id=div_id)
+    if not anchor:
+        print(f"Error: Element with id '{div_id}' not found.")
+        return
+
+    # 2. Find the first 'bx--data-table' following this anchor
+    table = anchor.find_next('table', class_='bx--data-table')
+    if not table:
+        print(f"Error: No table found following ID '{div_id}'.")
+        return
+
+    csv_file = f"{output_file_name}.csv"
+    md_file = f"{output_file_name}.md"
+    headers = ["APAR", "Is Security", "Is HIPER", "Description"]
+
+    try:
+        # Open both files for line-by-line writing
+        with open(csv_file, 'w', newline='', encoding='utf-8') as f_csv, \
+             open(md_file, 'w', encoding='utf-8') as f_md:
+            
+            writer = csv.writer(f_csv)
+            writer.writerow(headers)
+
+            # Markdown Table Setup
+            f_md.write(f"| {' | '.join(headers)} |\n")
+            f_md.write(f"| {' | '.join(['---'] * len(headers))} |\n")
+
+            # 3. Process rows (skipping the header row if it contains <th>)
+            rows = table.find_all('tr')[1:]
+            for row in rows:
+                cols = row.find_all('td')
+                
+                # Validation: Skip header rows or empty rows
+                if len(cols) < 4:
+                    continue
+
+                # --- Field Extraction Logic ---
+                
+                # 1st Field: 3rd <td> (Check for <a> or raw text)
+                # col3 = cols[2]
+                apar = cols[2].find('a').text.strip() if cols[2].find('a') else cols[2].get_text(strip=True)
+
+                # 2nd Field: 1st <td> (Is Security? Look for ✓)
+                is_security = "Y" if "✓" in cols[0].get_text() else "N"
+
+                # 3rd Field: 4th <td> (Is HIPER? Look for ✓)
+                is_hiper = "Y" if "✓" in cols[1].get_text() else "N"
+
+                # 4th Field: 2nd <td> (Description)
+                description = cols[3].get_text(strip=True)
+
+                row_data = [apar, is_security, is_hiper, description]
+                print("["+str(count)+"/"+metadata["Total"]+"] "+apar+"\n")
+                count += 1
+                # 4. Write to files immediately
+                writer.writerow(row_data)
+                f_md.write(f"| {' | '.join(row_data)} |\n")
+        print(f"Successfully generated: {csv_file} and {md_file}")
+
+    except Exception as e:
+        print(f"File writing failed: {e}")
+
+def get_data(url, headers):
+    try:
+        resp = requests.get(url, headers=headers, timeout=15)
+        if resp.status_code == 200:
+            print("Complete retrieving data.")
+            return BeautifulSoup(resp.content, 'html.parser')
+        return None
+    except Exception as e:
+        # print("Error retrieving data. return code: "+resp.status_code)
+        print(f"Error processing: {e}")
+        return None
 
 def format_date_for_file(date_str):
     """Converts '09 February 2026' to '20260209'."""
@@ -16,75 +96,67 @@ def format_date_for_file(date_str):
         return "UnknownDate"
     except Exception:
         return "UnknownDate"
+# def find_latest_version(url, headers):
+#     """Scans the page to find the most recent version in the table."""
+#     try:
+#         resp = requests.get(url, headers=headers, timeout=15)
+#         if resp.status_code == 200:
+#             soup = BeautifulSoup(resp.text, 'html.parser')
+#             # Look for IDs that follow the V.R.M.F pattern (4-5 digits) inside the main table
+#             table = soup.find('table', class_='bx--data-table')
+#             if table:
+#                 # IBM typically puts the latest version in the first <tr> or via an <a> tag ID
+#                 # We look for the first element with an ID that looks like a version anchor
+#                 anchors = soup.find_all(id=re.compile(r'^\d{4,5}$'))
+#                 if anchors:
+#                     # The first one found on the page is usually the latest
+#                     latest_anchor = anchors[0]['id']
+#                     # print("Release Date: "+anchors[2]+"\n")
+#                     # Reconstruct dots: 90526 -> 9.0.5.26
+#                     if len(latest_anchor) == 5:
+#                         return f"{latest_anchor[0]}.{latest_anchor[1]}.{latest_anchor[2]}.{latest_anchor[3:]}"
+#                     elif len(latest_anchor) == 4:
+#                         return f"{latest_anchor[0]}.{latest_anchor[1]}.{latest_anchor[2]}.{latest_anchor[3]}"
+#         return None
+#     except Exception as e:
+#         print(f"Error finding latest version: {e}")
+#         return None
 
-def find_latest_version(url, headers):
-    """Scans the page to find the most recent version in the table."""
-    try:
-        resp = requests.get(url, headers=headers, timeout=15)
-        if resp.status_code == 200:
-            soup = BeautifulSoup(resp.text, 'html.parser')
-            # Look for IDs that follow the V.R.M.F pattern (4-5 digits) inside the main table
-            table = soup.find('table', class_='bx--data-table')
-            if table:
-                # IBM typically puts the latest version in the first <tr> or via an <a> tag ID
-                # We look for the first element with an ID that looks like a version anchor
-                anchors = soup.find_all(id=re.compile(r'^\d{4,5}$'))
-                if anchors:
-                    # The first one found on the page is usually the latest
-                    latest_anchor = anchors[0]['id']
-                    # Reconstruct dots: 90526 -> 9.0.5.26
-                    if len(latest_anchor) == 5:
-                        return f"{latest_anchor[0]}.{latest_anchor[1]}.{latest_anchor[2]}.{latest_anchor[3:]}"
-                    elif len(latest_anchor) == 4:
-                        return f"{latest_anchor[0]}.{latest_anchor[1]}.{latest_anchor[2]}.{latest_anchor[3]}"
-        return None
-    except Exception as e:
-        print(f"Error finding latest version: {e}")
-        return None
+# def find_version(soup, target_version):
+#     try:
+#         # soup = BeautifulSoup(html_content, 'html.parser')
+        
+#         if target_version in ["9.4.0.0", "9.3.0.0"]:
+#             # Find the first table row containing data
+#             first_row = soup.find('tr')
+#             if not first_row:
+#                 return "No rows found in HTML."
 
-def get_detailed_info(apar_num, headers, fields_to_track, item, source):
-    """Scrapes the individual APAR page for metadata."""
-    row_data = {field: "N/A" for field in fields_to_track}
-    row_data["APAR Number"] = apar_num
-    row_data["isSecurity"] = item["isSecurity"]
-    row_data["Source"] = source
+#             cols = first_row.find_all('td')
+#             anchor = first_row.find('a')
 
-    if source == "IHS":
-        row_data["Title"] = item["table_desc"]
-    
-    if item["isSecurity"] == "Y":
-        if source != "IHS": 
-            row_data["Title"] = item["table_desc"]
-        return row_data
+#             if anchor and len(cols) >= 5:
+#                 # Using an f-string or dictionary ensures we don't get concatenation errors
+#                 version_info = (
+#                     f"Version: {anchor.get_text(strip=True)} | "
+#                     f"Type: {cols[1].get_text(strip=True)} | "
+#                     f"Date: {cols[2].get_text(strip=True)} | "
+#                     f"Total: {cols[3].get_text(strip=True)} | "
+#                     f"Security: {cols[4].get_text(strip=True)}"
+#                 )
+#                 return version_info
 
-    apar_url = f"https://www.ibm.com/support/pages/apar/{apar_num}"
-    try:
-        time.sleep(0.5) 
-        resp = requests.get(apar_url, headers=headers, timeout=10)
-        if resp.status_code == 200:
-            apar_soup = BeautifulSoup(resp.text, 'html.parser')
+#         else:
+#             # Exact match logic
+#             match = soup.find('a', string=target_version)
+#             if match:
+#                 return f"Exact match found: {match.get_text(strip=True)}"
             
-            if source != "IHS":
-                raw_title = apar_soup.title.string if apar_soup.title else ""
-                row_data["Title"] = re.sub(rf'^{apar_num}[:\-\s]*', '', raw_title, flags=re.IGNORECASE).strip()
+#         return "Version not found."
 
-            info_h2 = apar_soup.find('h2', string=lambda t: t and "APAR Information" in t)
-            if info_h2:
-                ul = info_h2.find_next('ul', class_='ibm-stock-list')
-                if ul:
-                    for li in ul.find_all('li'):
-                        h3, p = li.find('h3'), li.find('p')
-                        if h3 and p:
-                            header = h3.get_text(strip=True).replace(":", "").lower()
-                            for field in fields_to_track:
-                                if header == field.lower():
-                                    row_data[field] = p.get_text(strip=True)
-        else:
-            row_data["Title"] = item["table_desc"]
-    except Exception:
-        row_data["Title"] = item["table_desc"]
-    
-    return row_data
+#     except Exception as e:
+#         # This will catch the error and tell you exactly where it happened
+#         return f"Error finding latest version: {str(e)}"
 
 def scrape_table_logic(soup, anchor_id, table_class=None, find_meta=False):
     """Extracts Fix Pack metadata and APARs from the table."""
@@ -96,7 +168,7 @@ def scrape_table_logic(soup, anchor_id, table_class=None, find_meta=False):
     if not parent_table:
         return [], {}
 
-    # meta = {"Release Date": "Unknown", "Last Modified": "Unknown", "Status": "Unknown"}
+    meta = {"Release Date": "Unknown", "Last Modified": "Unknown", "Status": "Unknown"}
     
     # if find_meta:
     #     table_text = parent_table.get_text(" ", strip=True)
@@ -106,8 +178,8 @@ def scrape_table_logic(soup, anchor_id, table_class=None, find_meta=False):
     #     mod_match = re.search(r'Last modified:\s*(\d{1,2}\s+\w+\s+\d{4})', table_text, re.I)
     #     if mod_match: meta["Last Modified"] = mod_match.group(1).strip()
             
-    #     stat_match = re.search(r'Status:\s*(\w+)', table_text, re.I)
-    #     if stat_match: meta["Status"] = stat_match.group(1).strip()
+        # stat_match = re.search(r'Status:\s*(\w+)', table_text, re.I)
+        # if stat_match: meta["Status"] = stat_match.group(1).strip()
 
     queue = []
     seen = set()
@@ -124,7 +196,7 @@ def scrape_table_logic(soup, anchor_id, table_class=None, find_meta=False):
             if match:
                 apar_num = match.group(0)
                 if i + 1 < len(tds): description = tds[i+1].get_text(strip=True)
-                print("APAR:"+apar_num+" Security:" +is_sec+"HIPER: "+is_hiper+" Description: "+description+"\n")
+                print("APAR:"+apar_num+" Security:" +is_sec+" HIPER: "+is_hiper+" Description: "+description+"\n")
                 break
         if apar_num and apar_num not in seen:
             seen.add(apar_num)
@@ -136,6 +208,48 @@ def write_markdown_row(md_file, data, fields):
     row = "| " + " | ".join(str(data.get(f, "N/A")) for f in fields) + " |"
     md_file.write(row + "\n")
 
+def scrape_metadata(soup,input_version):
+    # vrmf_input = get_vrmf_input()
+    # base_url = "https://www.ibm.com/support/pages/fix-list-ibm-mq-version-94-lts"
+    
+    # response = requests.get(base_url)
+    # if response.status_code != 200:
+    #     print("Failed to retrieve the page.")
+    #     return
+
+    # soup = BeautifulSoup(response.content, 'html.parser')
+    main_table = soup.find('table', class_='bx--data-table')
+    
+    target_row = None
+    rows = main_table.find_all('tr')[1:] # Skip header
+
+    # Logic for 0.0 or exact match
+    if input_version.endswith(".0.0"):
+        target_row = rows[0] # Latest
+    else:
+        for row in rows:
+            if input_version in row.get_text():
+                target_row = row
+                break
+
+    if not target_row:
+        print(f"Version {input_version} not found in the table.")
+        return
+
+    cols = target_row.find_all('td')
+    link_tag = cols[0].find('a')
+    version_clean = link_tag.text.strip().replace("IBM MQ ", "")
+    metadata = {
+        "Fixpack": version_clean,
+        "Type": cols[1].text.strip(),
+        "Date": cols[2].text.strip(),
+        "Total": cols[3].text.strip(),
+        "Security": cols[4].text.strip(),
+        "Hiper": cols[5].text.strip()
+    }
+    # print(metadata["Fixpack"]+" Type: "+metadata["Type"]+" Date: "+metadata["Date"]+" Total: "+metadata["Total"]+" Security: "+metadata["Security"]+" HIPER: "+metadata["Hiper"]+"\n")
+    return metadata
+
 def main():
     print("--- IBM Consolidated APARs for WebSphere MQ 9.4 LTS and 9.3 LTS ---")
     user_version = input("Enter Fix Pack Version (e.g., 9.4.0.20 or 9.4.0.0/9.3.0.0 for latest): ").strip()
@@ -144,66 +258,72 @@ def main():
     # Base URLs for version detection
     v94_base = "https://www.ibm.com/support/pages/fix-list-ibm-mq-version-94-lts"
     v93_base = "https://www.ibm.com/support/pages/fix-list-ibm-mq-version-93-lts"
-
-    # AUTO-DETECT LATEST VERSION
-    if user_version in ["9.3.0.0", "9.4.0.0"]:
-        print(f"Version {user_version} detected. Finding latest released version...")
-        target_url = v94_base if user_version.startswith("9.4") else v93_base
-        latest = find_latest_version(target_url, headers)
-        if latest:
-            print(f"Latest version found: {latest}")
-            user_version = latest
-        else:
-            print("Could not detect latest version. Proceeding with input.")
-
-    version_anchor = user_version.replace(".", "")
-    print("Version Anchor: " + version_anchor + "\n")
     
+    if user_version.startswith("9.3."):
+        mq_base_url = v93_base
+        # mq_url = f"{v93_base}#{version_anchor}"
+    elif user_version.startswith("9.4."):
+        mq_base_url = v94_base
+        # mq_url = f"{v94_base}#{version_anchor}"
+    else:
+        print("Error: Major version must be 9.3 or 9.4")
+        return
+    
+    print("MQ Base URL: "+mq_base_url+"\n")
+
+    soup = get_data(mq_base_url, headers)
+    metadata = scrape_metadata(soup,user_version)
+    print(metadata["Fixpack"]+" Type: "+metadata["Type"]+" Date: "+metadata["Date"]+" Total: "+metadata["Total"]+" Security: "+metadata["Security"]+" HIPER: "+metadata["Hiper"]+"\n")
+    user_version = metadata["Fixpack"]
+    version_anchor = user_version.replace(".", "")
+    print("User Version: "+user_version+"\n")
+    print("Version Anchor: " + version_anchor + "\n")
     if user_version.startswith("9.3."):
         mq_url = f"{v93_base}#{version_anchor}"
     elif user_version.startswith("9.4."):
         mq_url = f"{v94_base}#{version_anchor}"
-    else:
-        print("Error: Major version must be 9.3 or 9.4")
-        return
-    base_prefix = f"mq_fixpack_{version_anchor}"
+
     print("MQ URL: "+mq_url+"\n")
-    fields = ["APAR Number", "isSecurity", "Title", "Reported component name", "Status", "PE", "HIPER", "Submitted date", "Closed date"]
-    counts = {"MQ": 0, "HIPER": 0, "SECURITY": 0}
-    collected_meta = {}
-    sources = [
-        {"name": "MQ", "url": mq_url, "class": "bx--data-table", "find_meta": True}
-    ]
+
+    process_apars_table(soup,version_anchor, metadata,"test")
+    # base_prefix = f"mq_fixpack_{version_anchor}"
+    # fields = ["APAR Number", "isSecurity", "Title", "HIPER"]
+    # # counts = {"MQ": 0, "HIPER": 0, "SECURITY": 0}
+    # collected_meta = {}
+    # sources = [
+    #     {"name": "MQ", "url": mq_url, "class": "bx--data-table", "find_meta": True}
+    # ]
 
     final_csv, final_md = None, None
+    
 
-    for src in sources:
-          print(f"\nProcessing {src['name']}...")
-          try:
-            resp = requests.get(src['url'], headers=headers, timeout=15)
-            if resp.status_code == 200:
-                soup = BeautifulSoup(resp.text, 'html.parser')
-                queue, meta = scrape_table_logic(soup, version_anchor, table_class=src['class'], find_meta=src['find_meta'])
+    # for src in sources:
+    #       print(f"\nProcessing {src['name']}...")
+    #       try:
+    #         resp = requests.get(src['url'], headers=headers, timeout=15)
+    #         if resp.status_code == 200:
+    #             soup = BeautifulSoup(resp.text, 'html.parser')
+    #             queue, meta = scrape_table_logic(soup, version_anchor, table_class=src['class'], find_meta=src['find_meta'])
                 
-                if src['find_meta']:
-                    collected_meta = meta
-                    file_date = format_date_for_file(meta['Release Date'])
-                    final_csv = f"{base_prefix}_{file_date}.csv"
-                    final_md = f"{base_prefix}_{file_date}.md"
+    #             if src['find_meta']:
+    #                 collected_meta = meta
+    #                 file_date = format_date_for_file(meta['Release Date'])
+    #                 final_csv = f"{base_prefix}_{file_date}.csv"
+    #                 final_md = f"{base_prefix}_{file_date}.md"
                 
-                if not final_csv:
-                    final_csv = f"{base_prefix}_NoDate.csv"
-                    final_md = f"{base_prefix}_NoDate.md"
+    #             if not final_csv:
+    #                 final_csv = f"{base_prefix}_NoDate.csv"
+    #                 final_md = f"{base_prefix}_NoDate.md"
 
-                if not os.path.exists(final_csv):
-                    with open(final_csv, mode='w', newline='', encoding='utf-8') as cf, \
-                         open(final_md, mode='w', encoding='utf-8') as mf:
-                        csv.DictWriter(cf, fieldnames=fields).writeheader()
-                        mf.write(f"# IBM Support Fix List Report: {user_version}\n\n")
-                        if collected_meta:
-                            mf.write(f"**Release Date:** {collected_meta.get('Release Date')} | **Status:** {collected_meta.get('Status')}\n\n")
-                        mf.write("| " + " | ".join(fields) + " |\n")
-                        mf.write("| " + " | ".join(["---"] * len(fields)) + " |\n")
+    #             if not os.path.exists(final_csv):
+    #                 with open(final_csv, mode='w', newline='', encoding='utf-8') as cf, \
+    #                      open(final_md, mode='w', encoding='utf-8') as mf:
+    #                     csv.DictWriter(cf, fieldnames=fields).writeheader()
+    #                     mf.write(f"# IBM Support Fix List Report: {user_version}\n\n")
+    #                     if collected_meta:
+    #                         mf.write(f"**Release Date:** {collected_meta.get('Release Date')} | **Status:** {collected_meta.get('Status')}\n\n")
+    #                     mf.write("| " + " | ".join(fields) + " |\n")
+    #                     mf.write("| " + " | ".join(["---"] * len(fields)) + " |\n")
 
                 # for i, item in enumerate(queue, 1):
                 #     data = get_detailed_info(item['num'], headers, fields, item, src['name'])
@@ -214,14 +334,13 @@ def main():
                 #     counts[src['name']] += 1
                 #     print(f"   [{i}/{len(queue)}] {item['num']} ({src['name']})")
                     
-          except Exception as e:
-            print(f"Error processing {src['name']}: {e}")
+        #   except Exception as e:
+        #     print(f"Error processing {src['name']}: {e}")
 
-    print(f"\n" + "="*45 + f"\nFIX PACK DETAILS ({user_version})\n" + "="*45)
-    if collected_meta:
-        # print(f"Fix Release Date: {collected_meta.get('Release Date')}\nLast Modified:    {collected_meta.get('Last Modified')}\nStatus:           {collected_meta.get('Status')}")
-        print(f"Last Modified:    {collected_meta.get('Last Modified')}\n")
+    # print(f"\n" + "="*45 + f"\nFIX PACK DETAILS ({user_version})\n" + "="*45)
+    # if collected_meta:
+    #     # print(f"Fix Release Date: {collected_meta.get('Release Date')}\nLast Modified:    {collected_meta.get('Last Modified')}\nStatus:           {collected_meta.get('Status')}")
+    #     print(f"Last Modified:    {collected_meta.get('Last Modified')}\n")
     # print("-"*45 + f"\nCSV Report: {final_csv}\nMD Report:  {final_md}\nTotals:     WAS ({counts['WAS']}), IHS ({counts['IHS']})\n" + "="*45)
-
 if __name__ == "__main__":
     main()
