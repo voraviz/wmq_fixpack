@@ -5,13 +5,16 @@ import re
 import time
 import os
 from datetime import datetime
-def process_apars_table(soup, div_id, metadata, output_file_name):
+import csv
+import re
+from bs4 import BeautifulSoup
+
+def process_apars_table(soup, div_id, output_file_name, metadata):
     """
-    Locates a div by ID, then finds the first table with class 'bx--data-table' 
-    following that div in the document structure.
+    Locates an element by ID, finds the first 'bx--data-table' after it,
+    extracts APARs matching a regex, and writes files with metadata headers.
     """
-    # 1. Locate the anchor div/span
-    count = 1
+    # 1. Locate the anchor
     anchor = soup.find(id=div_id)
     if not anchor:
         print(f"Error: Element with id '{div_id}' not found.")
@@ -25,30 +28,39 @@ def process_apars_table(soup, div_id, metadata, output_file_name):
 
     csv_file = f"{output_file_name}.csv"
     md_file = f"{output_file_name}.md"
-    headers = ["APAR", "Is Security", "Is HIPER", "Description"]
-
+    
+    # Regex for APAR: Starts with 2 letters followed by digits (e.g., DT12345, IT99999)
+    apar_regex = re.compile(r'^[A-Z]{2}\d+')
+    count = 1
     try:
-        # Open both files for line-by-line writing
         with open(csv_file, 'w', newline='', encoding='utf-8') as f_csv, \
              open(md_file, 'w', encoding='utf-8') as f_md:
             
             writer = csv.writer(f_csv)
-            writer.writerow(headers)
+            writer.writerow(["APAR", "Is Security", "Is HIPER", "Description"])
 
-            # Markdown Table Setup
-            f_md.write(f"| {' | '.join(headers)} |\n")
-            f_md.write(f"| {' | '.join(['---'] * len(headers))} |\n")
+            # --- Write Markdown Metadata Header ---
+            f_md.write(f"# Fix List for {metadata['Fixpack']}\n\n")
+            f_md.write(f"| Property | Details |\n")
+            f_md.write(f"| :--- | :--- |\n")
+            f_md.write(f"| **Release Type** | {metadata['Type']} |\n")
+            f_md.write(f"| **Release Date** | {metadata['Date']} |\n")
+            f_md.write(f"| **Total Fixes** | {metadata['Total']} |\n")
+            f_md.write(f"| **Security Fixes** | {metadata['Security']} |\n")
+            f_md.write(f"| **HIPER Fixes** | {metadata['Hiper']} |\n\n")
+            
+            f_md.write("## APAR Details\n\n")
+            f_md.write("| APAR | Is Security | Is HIPER | Description |\n")
+            f_md.write("| --- | --- | --- | --- |\n")
 
-            # 3. Process rows (skipping the header row if it contains <th>)
-            rows = table.find_all('tr')[1:]
+            # 3. Process Table Rows
+            rows = table.find_all('tr')
             for row in rows:
                 cols = row.find_all('td')
-                
-                # Validation: Skip header rows or empty rows
                 if len(cols) < 4:
                     continue
 
-                # --- Field Extraction Logic ---
+#                 # --- Field Extraction Logic ---
                 
                 # 1st Field: 3rd <td> (Check for <a> or raw text)
                 # col3 = cols[2]
@@ -66,13 +78,84 @@ def process_apars_table(soup, div_id, metadata, output_file_name):
                 row_data = [apar, is_security, is_hiper, description]
                 print("["+str(count)+"/"+metadata["Total"]+"] "+apar+"\n")
                 count += 1
+
+                # Write data
                 # 4. Write to files immediately
                 writer.writerow(row_data)
                 f_md.write(f"| {' | '.join(row_data)} |\n")
+
         print(f"Successfully generated: {csv_file} and {md_file}")
 
     except Exception as e:
-        print(f"File writing failed: {e}")
+        print(f"An error occurred: {e}")
+# def process_apars_table(soup, div_id, metadata, output_file_name):
+#     """
+#     Locates a div by ID, then finds the first table with class 'bx--data-table' 
+#     following that div in the document structure.
+#     """
+#     # 1. Locate the anchor div/span
+#     count = 1
+#     anchor = soup.find(id=div_id)
+#     if not anchor:
+#         print(f"Error: Element with id '{div_id}' not found.")
+#         return
+
+#     # 2. Find the first 'bx--data-table' following this anchor
+#     table = anchor.find_next('table', class_='bx--data-table')
+#     if not table:
+#         print(f"Error: No table found following ID '{div_id}'.")
+#         return
+
+#     csv_file = f"{output_file_name}.csv"
+#     md_file = f"{output_file_name}.md"
+#     headers = ["APAR", "Is Security", "Is HIPER", "Description"]
+
+#     try:
+#         # Open both files for line-by-line writing
+#         with open(csv_file, 'w', newline='', encoding='utf-8') as f_csv, \
+#              open(md_file, 'w', encoding='utf-8') as f_md:
+            
+#             writer = csv.writer(f_csv)
+#             writer.writerow(headers)
+
+#             # Markdown Table Setup
+#             f_md.write(f"| {' | '.join(headers)} |\n")
+#             f_md.write(f"| {' | '.join(['---'] * len(headers))} |\n")
+
+#             # 3. Process rows (skipping the header row if it contains <th>)
+#             rows = table.find_all('tr')[1:]
+#             for row in rows:
+#                 cols = row.find_all('td')
+                
+#                 # Validation: Skip header rows or empty rows
+#                 if len(cols) < 4:
+#                     continue
+
+#                 # --- Field Extraction Logic ---
+                
+#                 # 1st Field: 3rd <td> (Check for <a> or raw text)
+#                 # col3 = cols[2]
+#                 apar = cols[2].find('a').text.strip() if cols[2].find('a') else cols[2].get_text(strip=True)
+
+#                 # 2nd Field: 1st <td> (Is Security? Look for ✓)
+#                 is_security = "Y" if "✓" in cols[0].get_text() else "N"
+
+#                 # 3rd Field: 4th <td> (Is HIPER? Look for ✓)
+#                 is_hiper = "Y" if "✓" in cols[1].get_text() else "N"
+
+#                 # 4th Field: 2nd <td> (Description)
+#                 description = cols[3].get_text(strip=True)
+
+#                 row_data = [apar, is_security, is_hiper, description]
+#                 print("["+str(count)+"/"+metadata["Total"]+"] "+apar+"\n")
+#                 count += 1
+#                 # 4. Write to files immediately
+#                 writer.writerow(row_data)
+#                 f_md.write(f"| {' | '.join(row_data)} |\n")
+#         print(f"Successfully generated: {csv_file} and {md_file}")
+
+#     except Exception as e:
+#         print(f"File writing failed: {e}")
 
 def get_data(url, headers):
     try:
@@ -96,68 +179,6 @@ def format_date_for_file(date_str):
         return "UnknownDate"
     except Exception:
         return "UnknownDate"
-# def find_latest_version(url, headers):
-#     """Scans the page to find the most recent version in the table."""
-#     try:
-#         resp = requests.get(url, headers=headers, timeout=15)
-#         if resp.status_code == 200:
-#             soup = BeautifulSoup(resp.text, 'html.parser')
-#             # Look for IDs that follow the V.R.M.F pattern (4-5 digits) inside the main table
-#             table = soup.find('table', class_='bx--data-table')
-#             if table:
-#                 # IBM typically puts the latest version in the first <tr> or via an <a> tag ID
-#                 # We look for the first element with an ID that looks like a version anchor
-#                 anchors = soup.find_all(id=re.compile(r'^\d{4,5}$'))
-#                 if anchors:
-#                     # The first one found on the page is usually the latest
-#                     latest_anchor = anchors[0]['id']
-#                     # print("Release Date: "+anchors[2]+"\n")
-#                     # Reconstruct dots: 90526 -> 9.0.5.26
-#                     if len(latest_anchor) == 5:
-#                         return f"{latest_anchor[0]}.{latest_anchor[1]}.{latest_anchor[2]}.{latest_anchor[3:]}"
-#                     elif len(latest_anchor) == 4:
-#                         return f"{latest_anchor[0]}.{latest_anchor[1]}.{latest_anchor[2]}.{latest_anchor[3]}"
-#         return None
-#     except Exception as e:
-#         print(f"Error finding latest version: {e}")
-#         return None
-
-# def find_version(soup, target_version):
-#     try:
-#         # soup = BeautifulSoup(html_content, 'html.parser')
-        
-#         if target_version in ["9.4.0.0", "9.3.0.0"]:
-#             # Find the first table row containing data
-#             first_row = soup.find('tr')
-#             if not first_row:
-#                 return "No rows found in HTML."
-
-#             cols = first_row.find_all('td')
-#             anchor = first_row.find('a')
-
-#             if anchor and len(cols) >= 5:
-#                 # Using an f-string or dictionary ensures we don't get concatenation errors
-#                 version_info = (
-#                     f"Version: {anchor.get_text(strip=True)} | "
-#                     f"Type: {cols[1].get_text(strip=True)} | "
-#                     f"Date: {cols[2].get_text(strip=True)} | "
-#                     f"Total: {cols[3].get_text(strip=True)} | "
-#                     f"Security: {cols[4].get_text(strip=True)}"
-#                 )
-#                 return version_info
-
-#         else:
-#             # Exact match logic
-#             match = soup.find('a', string=target_version)
-#             if match:
-#                 return f"Exact match found: {match.get_text(strip=True)}"
-            
-#         return "Version not found."
-
-#     except Exception as e:
-#         # This will catch the error and tell you exactly where it happened
-#         return f"Error finding latest version: {str(e)}"
-
 def scrape_table_logic(soup, anchor_id, table_class=None, find_meta=False):
     """Extracts Fix Pack metadata and APARs from the table."""
     target = soup.find(id=anchor_id)
@@ -285,7 +306,7 @@ def main():
 
     print("MQ URL: "+mq_url+"\n")
 
-    process_apars_table(soup,version_anchor, metadata,"test")
+    process_apars_table(soup,version_anchor,"test", metadata)
     # base_prefix = f"mq_fixpack_{version_anchor}"
     # fields = ["APAR Number", "isSecurity", "Title", "HIPER"]
     # # counts = {"MQ": 0, "HIPER": 0, "SECURITY": 0}
