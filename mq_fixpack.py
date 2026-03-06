@@ -4,10 +4,7 @@ import csv
 import re
 import time
 import os
-from datetime import datetime
-import csv
-import re
-from bs4 import BeautifulSoup
+
 
 def process_apars_table(soup, div_id, output_file_name, metadata):
     """
@@ -53,8 +50,8 @@ def process_apars_table(soup, div_id, output_file_name, metadata):
             f_md.write("| APAR | Is Security | Is HIPER | Description |\n")
             f_md.write("| --- | --- | --- | --- |\n")
 
-            # 3. Process Table Rows
-            rows = table.find_all('tr')
+            # 3. Process Table Rows, Skip 1st row because it is header
+            rows = table.find_all('tr')[1:]
             for row in rows:
                 cols = row.find_all('td')
                 if len(cols) < 4:
