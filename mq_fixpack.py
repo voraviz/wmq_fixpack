@@ -6,7 +6,7 @@ import time
 import os
 from datetime import datetime
 def print_metadata(metadata):
-        print(f"\n" + "="*45 + f"\nFIX PACK DETAILS ("+metadata["Fixpack"]+")\n" + "="*45)
+        print(f"\n" + "="*45 + f"\nWebSphere MQ FIX PACK "+metadata["Fixpack"]+"\n" + "="*45)
         print(f"Fix Type: "+metadata["Type"]+"\nRelease Date: "+metadata["Date"]+"\nTotal Fixes: "+metadata["Total"]+"\nSecurity Fixes: "+metadata["Security"]+"\nHIPER Fixes: "+metadata["Hiper"]+"\n")
         print("-"*45 + f"\nCSV Report: " + metadata["Report"] + ".csv\nMarkdown Report: " + metadata["Report"] + ".md\n"+"="*45)
 
@@ -52,8 +52,8 @@ def process_apars_table(soup, div_id, output_file_name, metadata):
             writer.writerow(["APAR", "Is Security", "Is HIPER", "Description"])
 
             # --- Write Markdown Metadata Header ---
-            f_md.write(f"# Fix List for {metadata['Fixpack']}\n\n")
-            f_md.write(f"| Property | Details |\n")
+            f_md.write(f"# Fix List for WebSphere MQ {metadata['Fixpack']}\n\n")
+            f_md.write(f"|  |  |\n")
             f_md.write(f"| :--- | :--- |\n")
             f_md.write(f"| **Release Type** | {metadata['Type']} |\n")
             f_md.write(f"| **Release Date** | {metadata['Date']} |\n")
