@@ -1,10 +1,25 @@
-import requests
-from bs4 import BeautifulSoup
+import requests # type: ignore
+from bs4 import BeautifulSoup # type: ignore
 import csv
 import re
 import time
 import os
+from datetime import datetime
+def print_metadata(metadata):
+        print(f"\n" + "="*45 + f"\nFIX PACK DETAILS ("+metadata["Fixpack"]+")\n" + "="*45)
+        print(f"Fix Type: "+metadata["Type"]+"\nRelease Date: "+metadata["Date"]+"\nTotal Fixes: "+metadata["Total"]+"\nSecurity Fixes: "+metadata["Security"]+"\nHIPER Fixes: "+metadata["Hiper"]+"\n")
+        print("-"*45 + f"\nCSV Report: " + metadata["Report"] + ".csv\nMarkdown Report: " + metadata["Report"] + ".md\n"+"="*45)
 
+def format_date_for_file(date_str):
+    """Converts '09 February 2026' to '20260209'."""
+    try:
+        match = re.search(r'(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})', date_str, re.I)
+        if match:
+            date_obj = datetime.strptime(match.group(), "%d %B %Y")
+            return date_obj.strftime("%Y%m%d")
+        return "UnknownDate"
+    except Exception:
+        return "UnknownDate"
 
 def process_apars_table(soup, div_id, output_file_name, metadata):
     """
@@ -251,7 +266,7 @@ def scrape_metadata(soup,input_version):
                 break
 
     if not target_row:
-        print(f"Version {input_version} not found in the table.")
+        # print(f"Version {input_version} not found in the table.")
         return
 
     cols = target_row.find_all('td')
@@ -287,23 +302,26 @@ def main():
         print("Error: Major version must be 9.3 or 9.4")
         return
     
-    print("MQ Base URL: "+mq_base_url+"\n")
 
     soup = get_data(mq_base_url, headers)
     metadata = scrape_metadata(soup,user_version)
-    print(metadata["Fixpack"]+" Type: "+metadata["Type"]+" Date: "+metadata["Date"]+" Total: "+metadata["Total"]+" Security: "+metadata["Security"]+" HIPER: "+metadata["Hiper"]+"\n")
-    user_version = metadata["Fixpack"]
-    version_anchor = user_version.replace(".", "")
-    print("User Version: "+user_version+"\n")
-    print("Version Anchor: " + version_anchor + "\n")
-    if user_version.startswith("9.3."):
-        mq_url = f"{v93_base}#{version_anchor}"
-    elif user_version.startswith("9.4."):
-        mq_url = f"{v94_base}#{version_anchor}"
+    # print(metadata["Fixpack"]+" Type: "+metadata["Type"]+" Date: "+metadata["Date"]+" Total: "+metadata["Total"]+" Security: "+metadata["Security"]+" HIPER: "+metadata["Hiper"]+"\n")
+    if metadata:
+        user_version = metadata["Fixpack"]
+        version_anchor = user_version.replace(".", "")
+        print("User Version: "+user_version+"\n")
+        print("Version Anchor: " + version_anchor + "\n")
+        if user_version.startswith("9.3."):
+            mq_url = f"{v93_base}#{version_anchor}"
+        elif user_version.startswith("9.4."):
+            mq_url = f"{v94_base}#{version_anchor}"
 
-    print("MQ URL: "+mq_url+"\n")
-
-    process_apars_table(soup,version_anchor,"test", metadata)
+        # print("MQ URL: "+mq_url+"\n")
+        metadata["Report"]=output_file_name = "wmq_fixpack_"+version_anchor+"_"+format_date_for_file(metadata["Date"])
+        process_apars_table(soup,version_anchor,metadata["Report"], metadata)
+        print_metadata(metadata)
+    else:
+        print("\n Fix pack "+user_version+" is not available.\n")
     # base_prefix = f"mq_fixpack_{version_anchor}"
     # fields = ["APAR Number", "isSecurity", "Title", "HIPER"]
     # # counts = {"MQ": 0, "HIPER": 0, "SECURITY": 0}
@@ -312,7 +330,7 @@ def main():
     #     {"name": "MQ", "url": mq_url, "class": "bx--data-table", "find_meta": True}
     # ]
 
-    final_csv, final_md = None, None
+    # final_csv, final_md = None, None
     
 
     # for src in sources:
