@@ -5,6 +5,108 @@ import re
 import time
 import os
 from datetime import datetime
+
+# from selenium import webdriver
+# from selenium.webdriver.chrome.service import Service
+# from selenium.webdriver.chrome.options import Options
+# from selenium.webdriver.common.by import By
+# from selenium.webdriver.support.ui import WebDriverWait
+# from selenium.webdriver.support import expected_conditions as EC
+# from webdriver_manager.chrome import ChromeDriverManager
+
+
+    
+# def scrape_apar_extended_details(apar_number):
+#     url = f"https://www.ibm.com/mysupport/s/defect/aCIgJ0000001SOrWAM/dt440509/{apar_number}"
+    
+#     chrome_options = Options()
+#     chrome_options.add_argument("--headless")
+#     chrome_options.add_argument("--window-size=1920,1080")
+    
+#     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+    
+#     try:
+#         driver.get(url)
+#         # Dynamic pages like this need a moment for the LWC components to hydrate
+#         time.sleep(6) 
+
+#         # JavaScript to pierce Shadow DOM and find the 'Document information' span
+#         script = """
+#         function findInShadow(selector, textContent) {
+#             let result = null;
+#             function search(root) {
+#                 if (result) return;
+#                 const elements = root.querySelectorAll ? root.querySelectorAll(selector) : [];
+#                 for (let el of elements) {
+#                     if (el.textContent.includes(textContent)) {
+#                         result = el;
+#                         return;
+#                     }
+#                 }
+#                 const allElements = root.querySelectorAll ? root.querySelectorAll('*') : [];
+#                 for (let el of allElements) {
+#                     if (el.shadowRoot) search(el.shadowRoot);
+#                 }
+#             }
+#             search(document);
+#             return result;
+#         }
+
+#         // Anchor to the specific span
+#         const anchorSpan = findInShadow('span', 'Document information');
+        
+#         if (!anchorSpan) return { "error": "Could not find 'Document information' span" };
+
+#         // Navigate to the 'Reported component name' section
+#         // Based on typical IBM LWC layouts, we look for the next siblings or nested paragraphs
+#         const container = anchorSpan.closest('div'); 
+        
+#         // Find the specific paragraph within this shadow tree
+#         const componentLabel = findInShadow('p.caption-01', 'Reported component name');
+        
+#         if (!componentLabel) {
+#             return { 
+#                 "error": "Found Document info, but not 'Reported component name'",
+#                 "debug_html": container ? container.outerHTML : "Container not found"
+#             };
+#         }
+
+#         const parentDiv = componentLabel.parentElement;
+#         const nextDiv1 = parentDiv.nextElementSibling;
+#         const nextDiv2 = nextDiv1 ? nextDiv1.nextElementSibling : null;
+
+#         return {
+#             "html_debug": parentDiv.outerHTML,
+#             "Component": componentLabel.nextElementSibling ? componentLabel.nextElementSibling.innerText : "",
+#             "Field_A": nextDiv1 ? nextDiv1.querySelectorAll('p')[1].innerText : "",
+#             "Field_B": nextDiv2 ? nextDiv2.querySelectorAll('p')[1].innerText : "",
+#             "Field_C": nextDiv2 ? nextDiv2.querySelectorAll('p')[2].innerText : ""
+#         };
+#         """
+
+#         data = driver.execute_script(script)
+        
+#         if data and "error" not in data:
+#             print("-" * 30)
+#             print("DEBUG: Target Container HTML")
+#             print(data.get("html_debug"))
+#             print("-" * 30)
+#             return data
+#         else:
+#             print(f"DEBUG Error: {data.get('error') if data else 'Unknown'}")
+#             if data and "debug_html" in data:
+#                 print("HTML near anchor:\n", data["debug_html"])
+#             return None
+
+#     except Exception as e:
+#         print(f"Python Exception: {e}")
+#         return None
+#     finally:
+#         driver.quit()
+
+
+
+
 def print_metadata(metadata):
         print(f"\n" + "="*45 + f"\nWebSphere MQ FIX PACK "+metadata["Fixpack"]+"\n" + "="*45)
         print(f"Fix Type: "+metadata["Type"]+"\nRelease Date: "+metadata["Date"]+"\nTotal Fixes: "+metadata["Total"]+"\nSecurity Fixes: "+metadata["Security"]+"\nHIPER Fixes: "+metadata["Hiper"]+"\n")
@@ -258,6 +360,7 @@ def scrape_metadata(soup,input_version):
 
     # Logic for 0.0 or exact match
     if input_version.endswith(".0.0"):
+        find_latest = True
         target_row = rows[0] # Latest
     else:
         for row in rows:
@@ -280,6 +383,8 @@ def scrape_metadata(soup,input_version):
         "Security": cols[4].text.strip(),
         "Hiper": cols[5].text.strip()
     }
+    if find_latest:
+        print ("Latest version found: "+version_clean+"\n")
     # print(metadata["Fixpack"]+" Type: "+metadata["Type"]+" Date: "+metadata["Date"]+" Total: "+metadata["Total"]+" Security: "+metadata["Security"]+" HIPER: "+metadata["Hiper"]+"\n")
     return metadata
 
@@ -309,8 +414,6 @@ def main():
     if metadata:
         user_version = metadata["Fixpack"]
         version_anchor = user_version.replace(".", "")
-        print("User Version: "+user_version+"\n")
-        print("Version Anchor: " + version_anchor + "\n")
         if user_version.startswith("9.3."):
             mq_url = f"{v93_base}#{version_anchor}"
         elif user_version.startswith("9.4."):
@@ -322,7 +425,15 @@ def main():
         print_metadata(metadata)
     else:
         print("\n Fix pack "+user_version+" is not available.\n")
-    # base_prefix = f"mq_fixpack_{version_anchor}"
+    
+    # result  = scrape_apar_extended_details("DT440509")
+    # if result:
+    #     print("\nFinal Extracted Data:")
+    #     for key, value in result.items():
+    #         if key != "html_debug":
+    #             print(f"{key}: {value}")
+     
+# base_prefix = f"mq_fixpack_{version_anchor}"
     # fields = ["APAR Number", "isSecurity", "Title", "HIPER"]
     # # counts = {"MQ": 0, "HIPER": 0, "SECURITY": 0}
     # collected_meta = {}
