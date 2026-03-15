@@ -359,6 +359,7 @@ def scrape_metadata(soup,input_version):
     rows = main_table.find_all('tr')[1:] # Skip header
 
     # Logic for 0.0 or exact match
+    find_latest = False
     if input_version.endswith(".0.0"):
         find_latest = True
         target_row = rows[0] # Latest
@@ -389,25 +390,27 @@ def scrape_metadata(soup,input_version):
     return metadata
 
 def main():
-    print("--- IBM Consolidated APARs for WebSphere MQ 9.4 LTS and 9.3 LTS ---")
-    user_version = input("Enter Fix Pack Version (e.g., 9.4.0.20 or 9.4.0.0/9.3.0.0 for latest): ").strip()
+    print("--- IBM Consolidated APARs for WebSphere MQ 9.4 CD ( 9.4.x.x) 9.4 LTS (9.4.0.x) and 9.3 LTS (9.3.0.x)---")
+    user_version = input("Enter Fix Pack Version (e.g., 9.4.0.20 or 9.4.0.0/9.3.0.0 for LTS latest): ").strip()
     headers = {"User-Agent": "Mozilla/5.0"}
 
     # Base URLs for version detection
+    v94_cd_base = "https://www.ibm.com/support/pages/node/7157705"
     v94_base = "https://www.ibm.com/support/pages/fix-list-ibm-mq-version-94-lts"
     v93_base = "https://www.ibm.com/support/pages/fix-list-ibm-mq-version-93-lts"
     
-    if user_version.startswith("9.3."):
+    if user_version.startswith("9.3.0"):
         mq_base_url = v93_base
         # mq_url = f"{v93_base}#{version_anchor}"
-    elif user_version.startswith("9.4."):
+    elif user_version.startswith("9.4.0"):
         mq_base_url = v94_base
         # mq_url = f"{v94_base}#{version_anchor}"
+    elif user_version.startswith("9.4."):
+        mq_base_url = v94_cd_base
     else:
-        print("Error: Major version must be 9.3 or 9.4")
+        print("Error: Major version must be 9.3.0, 9.4.0 or 9.4.x")
         return
     
-
     soup = get_data(mq_base_url, headers)
     metadata = scrape_metadata(soup,user_version)
     # print(metadata["Fixpack"]+" Type: "+metadata["Type"]+" Date: "+metadata["Date"]+" Total: "+metadata["Total"]+" Security: "+metadata["Security"]+" HIPER: "+metadata["Hiper"]+"\n")

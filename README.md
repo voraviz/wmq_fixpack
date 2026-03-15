@@ -1,12 +1,12 @@
 # WebSphere MQ Fix Pack Summary
 
-This Python script retrieves IBM's support pages to gather information about APARs (Authorized Program Analysis Reports) included in a specific IBM WebSphere MQ 9.3 LTS and 9.4 LTS. It consolidates fix pack information into CSV and Markdown files.
+This Python script retrieves IBM's support pages to gather information about APARs (Authorized Program Analysis Reports) included in a specific IBM WebSphere MQ 9.3 LTS and 9.4 LTS and 9.4 CD. It consolidates fix pack information into CSV and Markdown files.
 
 ## Features
 
 *   **Consolidated Data:** Gathers APARs for both WebSphere Application Server and IBM HTTP Server.
 *   **Latest Fix Pack:** if input with 9.4.0.0 or 9.3.0.0
-*   **Fix Pack Specific:** Fetches the list of APARs associated with a user-provided fix pack version (e.g., `9.4.0.20`).
+*   **Fix Pack Specific:** Fetches the list of APARs associated with a user-provided fix pack version (e.g., `9.4.0.20`, `9.4.1.1`).
 <!-- *   **Detailed Metadata:** For non-security APARs, it visits the individual APAR page to scrape metadata such as Component, Status, Submitted/Closed dates, and more. -->
 *   **Dual Export:** Saves all collected information into clean, easy-to-use CSV and Markdown files.
 
@@ -31,7 +31,7 @@ pip install requests beautifulsoup4
 ### Example Execution
 
 ```
---- IBM Consolidated APARs for WebSphere MQ 9.4 LTS and 9.3 LTS ---
+--- IBM Consolidated APARs for WebSphere MQ 9.4 CD ( 9.4.x.x) 9.4 LTS (9.4.0.x) and 9.3 LTS (9.3.0.x)---
 Enter Fix Pack Version (e.g., 9.4.0.20 or 9.4.0.0/9.3.0.0 for latest): 9.4.0.0
 Complete retrieving data.
 Latest version found: 9.4.0.20
