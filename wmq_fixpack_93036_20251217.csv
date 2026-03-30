@@ -1,0 +1,3 @@
+APAR,Is Security,Is HIPER,Description
+DT455009,Y,N,"IBM MQCVE-2025-53057, CVE-2025-53066[CVSS base score 7.5]"
+DT457389,N,N,Third party component updates for cumulative security update 9.3.0.36

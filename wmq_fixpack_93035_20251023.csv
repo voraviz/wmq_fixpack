@@ -1,0 +1,28 @@
+APAR,Is Security,Is HIPER,Description
+DT448473,Y,N,IBM MQCVE-2025-30754andCVE-2025-30754[CVSS base score 4.8]
+DT448803,Y,N,IBM MQCVE-2025-36047and IBM MQCVE-2025-48976[CVSS base score 7.5]
+DT451207,Y,N,IBM MQCVE-2020-36732[CVSS base score 5.3]
+DT447167,N,Y,IBM MQ RDQM queue managers unable to failover in a HA setup due to unmount timeout
+DT257419,N,N,IT43561: MQPUT1 to an AMS-secured queue from a client where AMS is disabled fails with rc=2063 MQRC_SECURITY_ERROR
+DT381905,N,N,IT46133: AMQ8079W and AMQ9546E are received when attempting to authenticate a domain user
+DT428301,N,N,IT47834: IBM MQ Console can fail to display messages for a local queue if a message contains an unmappable character in the message body
+DT428311,N,N,IT46189: MQ .NET allocates unneccesary memory when performing MQPUT with a non-RFH message.
+DT428331,N,N,IBM MQ process amqrmppa crashes with a SIGSEGV.
+DT428706,N,N,IT41673: AMQ6047 messages about data conversion from CCSID 0 to CCSID 0 appear in the error logs
+DT428809,N,N,"On IBM i, the warning messages AMQ9722 and AMQ9723 are displayed every time a channel starts. This can flood the queue manager logs and potentially push out other important diagnostic entries."
+DT429455,N,N,"IT45019: An unexpected MQRC_Q_SPACE_NOT_AVAILABLE error occurred after MAXFSIZE was reset to its default value, following a previous non-default configuration."
+DT429832,N,N,IT47358: IBM MQ Console does not show any messages on a queue if one or more messages has an invalid MQRFH2 header.
+DT429863,N,N,IT46860: Pipe returned MQRC 2035 when the '/opt' file system is mounted with the 'nosuid' option
+DT433628,N,N,CONNAME is truncated as cluster sender channel is defined during uniform cluster configuration
+DT436693,N,N,Ensure replyTo field of outgoing AMQP message properties is set correctly
+DT437109,N,N,IBM MQ client applications may encounter an issue where the same message is browsed twice under certain conditions.
+DT437989,N,N,IBM MQ classes for Java fail to rewrite MQRFH2 headers when little endian encoding is requested
+DT439243,N,N,"After upgrading IBM MQ Queue Manager on IBM i, Java clients fail to connect with error AMQ9207."
+DT443309,N,N,"SVRCONN channel closes, with insufficient diagnostics to determine the underlying cause"
+DT445899,N,N,Connecting a remote Queue Manager using the MQ Web Console with the no_security.xml configuration generates an MQWB2010E error.
+DT446198,N,N,IBM MQ Classes for Java can return an MQRC 2009 from a long-running MQQueue.get(...) call.
+DT447623,N,N,Unable to set the KEYRPWD QM attribute via PCF using an IBM MQ Java client.
+DT448966,N,N,MQ Web Console is unable to sort queues correctly by the Depth percentage property.
+DT450248,N,N,"On Windows 2025, MQ outputs say it is Windows 2022"
+DT452345,N,N,MQ Software Trial reports an incorrect number of days remaining.
+DT453325,N,N,Third party component updates for Fix Pack 9.3.0.35
