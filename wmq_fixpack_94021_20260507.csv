@@ -1,0 +1,7 @@
+APAR,Is Security,Is HIPER,Description
+DT462553,Y,N,IBM MQCVE-2026-2607[CVSS base score 5.1]
+DT464471,Y,N,IBM MQCVE-2024-29371[CVSS base score 7.5]
+DT466382,Y,N,IBM MQCVE-2025-14915andCVE-2025-14917andCVE-2026-1561[CVSS base score 6.7]
+DT468012,Y,N,"IBM MQ ApplianceCVE-2026-23231, CVE-2026-3497[CVSS Base score 7.8]"
+DT459412,N,N,Java client dynamic tracing using a default file
+DT469516,N,N,Third party component updates for cumulative security update 9.4.0.21
